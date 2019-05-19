@@ -35,13 +35,20 @@
 ;;
 ;;     (add-hook 'org-mode-hook 'orly-setup-completion)
 ;;
-;; Finally, we can set up the links to clickable in e.g. HTML
-;; export. For instance, Man links can point to https://linux.die.net/man/.
+;; Finally, we can set up the links to clickable in e.g. HTML export. For
+;; instance, man: links can point to https://linux.die.net/man/.
+;; And el: links can point to https://git.savannah.gnu.org/cgit/emacs.git/tree/
+;; or to https://github.com/emacs-mirror/emacs/.
 
 ;;; Code:
 
 (require 'org)
 (require 'counsel)
+
+(defgroup orly nil
+  "Additional `org-mode' links and completion."
+  :group 'convenience
+  :prefix "orly-")
 
 (defun orly-setup-links ()
   (org-link-set-parameters "el" :follow #'counsel--find-symbol :export #'orly--el-export)
@@ -76,6 +83,28 @@
       ((eq format 'latex) (format "\\textit{%s}" full-name))
       (t path))))
 
+(defcustom orly-el-web-address-function #'orly-el-web-address-github
+  "Which website to use for pointing to Emacs sources."
+  :type '(choice
+          (const :tag "Github" orly-el-web-address-github)
+          (const :tag "Savannah" orly-el-web-address-savannah)))
+
+(defun orly-el-web-address-github (file line)
+  (let ((base "https://github.com/emacs-mirror/emacs/blob/")
+        (tag "emacs-26.2"))
+    (concat
+     base tag
+     "/" file
+     "#L" line)))
+
+(defun orly-el-web-address-savannah (file line)
+  (let ((base "https://git.savannah.gnu.org/cgit/emacs.git/tree/")
+        (branch "emacs-26"))
+    (concat
+     base file
+     "?h=" branch
+     "#n" line)))
+
 (defun orly--el-export (path _desc format)
   "Export the link to a built-in Emacs function or variable."
   (cond
@@ -90,22 +119,14 @@
                     nil))))
        (if (null def)
            path
-         (let ((base "https://github.com/emacs-mirror/emacs/blob/")
-               (tag "emacs-26.2")
-               file line)
+         (let (file line)
            (with-current-buffer (car def)
              (if (string-match "/\\(\\(?:src\\|lisp\\)/.*\\)\\'" buffer-file-name)
                  (setq file (match-string 1 buffer-file-name))
                (error "Could not find definiton: %S" symbol))
              (setq line (number-to-string (line-number-at-pos (cdr def)))))
            (format "<a href=%S>%s</a>"
-                   (concat
-                    base
-                    tag
-                    "/"
-                    file
-                    "#L"
-                    line)
+                   (funcall orly-el-web-address-function file line)
                    path)))))
     (t path)))
 
