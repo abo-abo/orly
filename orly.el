@@ -3,6 +3,9 @@
 ;; Copyright (C) 2019  Oleh Krehel
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
+;; URL: https://github.com/abo-abo/orly
+;; Version: 0.1.0
+;; Package-Requires: ((emacs "26.1") (counsel "0.11.0"))
 ;; Keywords: convenience
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -28,6 +31,9 @@
 ;;
 ;; One other nice feature is completion: after the link type is entered, press
 ;; "C-M-i" (`complete-symbol') to complete further.
+;; To enable completion:
+;;
+;;     (add-hook 'org-mode-hook 'orly-setup-completion)
 
 ;;; Code:
 
@@ -110,9 +116,7 @@
                              (category . dabbrev))
                 (when (eq list 'uninitialized)
                   (save-excursion
-                    ;;--------------------------------
                     ;; New abbreviation to expand.
-                    ;;--------------------------------
                     (setq dabbrev--last-abbreviation abbrev)
                     ;; Find all expansion
                     (let ((completion-list
