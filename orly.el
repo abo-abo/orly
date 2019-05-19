@@ -59,7 +59,8 @@
 
 (defun orly-completion-filesystem ()
   (let (path)
-    (when (setq path (ffap-string-at-point))
+    (when (and (setq path (ffap-string-at-point))
+               (not (string= path "")))
       (when (string-match "\\`file:\\(.*\\)\\'" path)
         (setq path (match-string 1 path)))
       (let ((compl (all-completions path #'read-file-name-internal)))
