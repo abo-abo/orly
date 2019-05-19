@@ -34,6 +34,9 @@
 ;; To enable completion:
 ;;
 ;;     (add-hook 'org-mode-hook 'orly-setup-completion)
+;;
+;; Finally, we can set up the links to clickable in e.g. HTML
+;; export. For instance, Man links can point to https://linux.die.net/man/.
 
 ;;; Code:
 
