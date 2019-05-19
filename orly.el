@@ -44,7 +44,7 @@
 (require 'counsel)
 
 (defun orly-setup-links ()
-  (org-link-set-parameters "el" :follow #'counsel--find-symbol :export nil)
+  (org-link-set-parameters "el" :follow #'counsel--find-symbol :export #'orly--el-export)
   (org-link-set-parameters "man" :follow #'man :export #'orly--man-export))
 
 (orly-setup-links)
@@ -70,11 +70,44 @@
          (group (and (string-match "(\\([^()]+\\))" full-name)
                      (match-string 1 full-name))))
     (cond
-      ((eq format 'html) (format "<a href=%S> %s </a>"
+      ((eq format 'html) (format "<a href=%S>%s</a>"
                                  (format "https://linux.die.net/man/%s/%s" group path)
                                  full-name))
       ((eq format 'latex) (format "\\textit{%s}" full-name))
       (t path))))
+
+(defun orly--el-export (path _desc format)
+  "Export the link to a built-in Emacs function or variable."
+  (cond
+    ((eq format 'html)
+     (let* ((symbol (intern-soft path))
+            (def
+             (cond ((fboundp symbol)
+                    (find-definition-noselect symbol nil))
+                   ((boundp symbol)
+                    (find-definition-noselect symbol 'defvar))
+                   (t
+                    nil))))
+       (if (null def)
+           path
+         (let ((base "https://github.com/emacs-mirror/emacs/blob/")
+               (tag "emacs-26.2")
+               file line)
+           (with-current-buffer (car def)
+             (if (string-match "/\\(\\(?:src\\|lisp\\)/.*\\)\\'" buffer-file-name)
+                 (setq file (match-string 1 buffer-file-name))
+               (error "Could not find definiton: %S" symbol))
+             (setq line (number-to-string (line-number-at-pos (cdr def)))))
+           (format "<a href=%S>%s</a>"
+                   (concat
+                    base
+                    tag
+                    "/"
+                    file
+                    "#L"
+                    line)
+                   path)))))
+    (t path)))
 
 (defun orly-completion-symbols ()
   (when (looking-back "=[a-zA-Z]*" (line-beginning-position))
