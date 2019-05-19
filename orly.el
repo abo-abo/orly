@@ -40,12 +40,41 @@
 (require 'org)
 (require 'counsel)
 
-(let ((inhibit-message t))
-  (org-add-link-type "el" 'counsel--find-symbol)
-  (org-add-link-type "man" 'man))
+(defun orly-setup-links ()
+  (org-link-set-parameters "el" :follow #'counsel--find-symbol :export nil)
+  (org-link-set-parameters "man" :follow #'man :export #'orly--man-export))
+
+(orly-setup-links)
+
+(defun orly-setup-completion ()
+  (setq completion-at-point-functions
+        (delete-dups
+         (append '(orly-completion-symbols
+                   orly-completion-elisp
+                   orly-completion-filesystem
+                   orly-completion-refs
+                   orly-completion-dabbrev)
+                 completion-at-point-functions))))
+
+(defun orly--man-export (path _desc format)
+  "Export the link to a manpage."
+  (let* ((full-names
+          (ivy--re-filter (concat path "(")
+                          (all-completions path 'Man-completion-table)))
+         (full-name (if (= 1 (length full-names))
+                        (substring-no-properties (car full-names))
+                      path))
+         (group (and (string-match "(\\([^()]+\\))" full-name)
+                     (match-string 1 full-name))))
+    (cond
+      ((eq format 'html) (format "<a href=%S> %s </a>"
+                                 (format "https://linux.die.net/man/%s/%s" group path)
+                                 full-name))
+      ((eq format 'latex) (format "\\textit{%s}" full-name))
+      (t path))))
 
 (defun orly-completion-symbols ()
-  (when (looking-back "=[a-zA-Z]*")
+  (when (looking-back "=[a-zA-Z]*" (line-beginning-position))
     (let (cands)
       (save-match-data
         (save-excursion
@@ -57,7 +86,7 @@
         (list (match-beginning 0) (match-end 0) cands)))))
 
 (defun orly-completion-elisp ()
-  (when (looking-back "el:\\([a-zA-Z._-0-9]*\\)")
+  (when (looking-back "el:\\([a-zA-Z._-0-9]*\\)" (line-beginning-position))
     (list (match-beginning 1) (match-end 1)
           (all-completions
            (match-string-no-properties 1)
@@ -83,7 +112,7 @@
             (list (- (point) offset) (point) compl)))))))
 
 (defun orly-completion-refs ()
-  (when (looking-back "\\\\\\(?:ref\\|label\\){\\([^\n{}]\\)*")
+  (when (looking-back "\\\\\\(?:ref\\|label\\){\\([^\n{}]\\)*" (line-beginning-position))
     (let (cands beg end)
       (save-excursion
         (goto-char (point-min))
@@ -131,16 +160,6 @@
                             (mapcar #'downcase completion-list)))))
                 (complete-with-action a list s p)))))
       (list beg end (all-completions "" table)))))
-
-(defun orly-setup-completion ()
-  (setq completion-at-point-functions
-        (delete-dups
-         (append '(orly-completion-symbols
-                   orly-completion-elisp
-                   orly-completion-filesystem
-                   orly-completion-refs
-                   orly-completion-dabbrev)
-                 completion-at-point-functions))))
 
 (provide 'orly)
 ;;; orly.el ends here
