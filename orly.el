@@ -44,6 +44,7 @@
 
 (require 'org)
 (require 'counsel)
+(require 'dabbrev)
 
 (defgroup orly nil
   "Additional `org-mode' links and completion."
@@ -52,7 +53,8 @@
 
 (defun orly-setup-links ()
   (org-link-set-parameters "el" :follow #'counsel--find-symbol :export #'orly--el-export)
-  (org-link-set-parameters "man" :follow #'man :export #'orly--man-export))
+  (org-link-set-parameters "man" :follow #'man :export #'orly--man-export)
+  (org-link-set-parameters "pdf" :follow #'orly--open-pdf))
 
 (orly-setup-links)
 
@@ -65,6 +67,38 @@
                    orly-completion-refs
                    orly-completion-dabbrev)
                  completion-at-point-functions))))
+
+(defun orly-start (cmd &rest file-list)
+  "Run CMD on FILE-LIST using nohup."
+  (interactive
+   (let* ((files (dired-get-marked-files t nil))
+          (cmd (if current-prefix-arg
+                   (dired-read-shell-command "& on %s: " nil files)
+                 (let ((prog (dired-guess-default files)))
+                   (if (consp prog)
+                       (car prog)
+                     prog)))))
+     (if (cl-search (car files) cmd)
+         (list cmd)
+       (cons cmd files))))
+  (start-process
+   cmd nil shell-file-name
+   shell-command-switch
+   (concat
+    (unless (string-match-p "|" cmd)
+      "nohup 1>/dev/null 2>/dev/null ")
+    cmd
+    " "
+    (mapconcat #'shell-quote-argument file-list " "))))
+
+(defun orly--open-pdf (path)
+  "Example PATH to open on page 10: pdf:~/Downloads/test.pdf#10."
+  (let ((cmd (if (string-match "\\`\\(.*\\)#\\(.*\\)\\'" path)
+                 (let ((fname (match-string 1 path))
+                       (page (match-string 2 path)))
+                   (format "evince -p %s %s" page fname))
+               path)))
+    (orly-start cmd)))
 
 (defun orly--man-export (path _desc format)
   "Export the link to a manpage."
@@ -186,7 +220,6 @@
 
 (defun orly-completion-dabbrev ()
   (ignore-errors
-    (require 'dabbrev)
     (dabbrev--reset-global-variables)
     (let* ((dabbrev-check-other-buffers nil)
            (dabbrev-check-all-buffers nil)
