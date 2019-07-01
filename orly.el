@@ -54,7 +54,8 @@
 (defun orly-setup-links ()
   (org-link-set-parameters "el" :follow #'counsel--find-symbol :export #'orly--el-export)
   (org-link-set-parameters "man" :follow #'man :export #'orly--man-export)
-  (org-link-set-parameters "pdf" :follow #'orly--open-pdf))
+  (org-link-set-parameters "pdf" :follow #'orly--open-pdf)
+  (org-link-set-parameters "exe" :follow #'orly-describe-executable))
 
 (orly-setup-links)
 
@@ -63,6 +64,7 @@
         (delete-dups
          (append '(orly-completion-symbols
                    orly-completion-elisp
+                   orly-completion-executables
                    orly-completion-filesystem
                    orly-completion-refs
                    orly-completion-dabbrev)
@@ -183,6 +185,13 @@
            (match-string-no-properties 1)
            obarray))))
 
+(defun orly-completion-executables ()
+  (when (looking-back "exe:\\([a-zA-Z._-0-9]*\\)" (line-beginning-position))
+    (list (match-beginning 1) (match-end 1)
+          (all-completions
+           (match-string-no-properties 1)
+           (orly-executables)))))
+
 (defun orly-completion-filesystem ()
   (let (path)
     (when (and (setq path (ffap-string-at-point))
@@ -250,6 +259,29 @@
                             (mapcar #'downcase completion-list)))))
                 (complete-with-action a list s p)))))
       (list beg end (all-completions "" table)))))
+
+(defun orly-executables ()
+  "Return the list of executables in `exec-path'."
+  (let ((paths (cdr (reverse exec-path)))
+        path
+        completions)
+    (while (setq path (pop paths))
+      (let* ((dir (file-name-as-directory path))
+             (comps (and (file-accessible-directory-p dir)
+                         (file-name-all-completions "" dir)))
+             comp)
+        (while (setq comp (pop comps))
+          (if (and (not (member comp completions))
+                   (or (null shell-completion-execonly)
+                       (file-executable-p (concat dir comp))))
+              (push comp completions)))))
+    completions))
+
+(defun orly-describe-executable (exe)
+  (shell-command
+   (format
+    "dpkg -S $(which %s) | awk '{gsub(\":\",\"\"); system(\"apt-cache show \" $1)}'"
+    exe)))
 
 (provide 'orly)
 ;;; orly.el ends here
