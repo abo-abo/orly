@@ -70,16 +70,24 @@
                    orly-completion-dabbrev)
                  completion-at-point-functions))))
 
+(defun orly--guess-cmd (files)
+  (if current-prefix-arg
+      (dired-read-shell-command "& on %s: " nil files)
+    (let ((prog (dired-guess-default files)))
+      (if (consp prog)
+          (car prog)
+        prog))))
+
+(defun orly-autostart (file)
+  (let ((cmd (orly--guess-cmd (list file))))
+    (when cmd
+      (orly-start cmd file))))
+
 (defun orly-start (cmd &rest file-list)
   "Run CMD on FILE-LIST using nohup."
   (interactive
    (let* ((files (dired-get-marked-files t nil))
-          (cmd (if current-prefix-arg
-                   (dired-read-shell-command "& on %s: " nil files)
-                 (let ((prog (dired-guess-default files)))
-                   (if (consp prog)
-                       (car prog)
-                     prog)))))
+          (cmd (orly--guess-cmd files)))
      (if (cl-search (car files) cmd)
          (list cmd)
        (cons cmd files))))
