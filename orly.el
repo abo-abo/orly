@@ -91,22 +91,25 @@
      (if (cl-search (car files) cmd)
          (list cmd)
        (cons cmd files))))
-  (if (and (null (cdr file-list))
-           (file-executable-p (car file-list)))
-      (let ((buf (compile (concat "./" (car file-list)) t)))
-        (select-window (cl-find buf
-                                (window-list)
-                                :key #'window-buffer))
-        (goto-char (point-max)))
-    (start-process
-     cmd nil shell-file-name
-     shell-command-switch
-     (concat
-      (unless (string-match-p "|" cmd)
-        "nohup 1>/dev/null 2>/dev/null ")
-      cmd
-      " "
-      (mapconcat #'shell-quote-argument file-list " ")))))
+  (let (fname)
+    (if (and (null (cdr file-list))
+             (not (file-directory-p (setq fname (car file-list))))
+             (file-executable-p fname)
+             (string-match-p "^\\(#!\\|ELF\\)" (counsel--command "head" "-1" fname)))
+        (let ((buf (compile (concat "./" (car file-list)) t)))
+          (select-window (cl-find buf
+                                  (window-list)
+                                  :key #'window-buffer))
+          (goto-char (point-max)))
+      (start-process
+       cmd nil shell-file-name
+       shell-command-switch
+       (concat
+        (unless (string-match-p "|" cmd)
+          "nohup 1>/dev/null 2>/dev/null ")
+        cmd
+        " "
+        (mapconcat #'shell-quote-argument file-list " "))))))
 
 (defun orly--open-pdf (path)
   "Example PATH to open on page 10: pdf:~/Downloads/test.pdf#10."
