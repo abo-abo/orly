@@ -167,23 +167,25 @@
     ((eq format 'html)
      (let* ((symbol (intern-soft path))
             (def
-             (cond ((fboundp symbol)
-                    (find-definition-noselect symbol nil))
-                   ((boundp symbol)
-                    (find-definition-noselect symbol 'defvar))
-                   (t
-                    nil))))
+             (condition-case nil
+                 (cond ((fboundp symbol)
+                        (find-definition-noselect symbol nil))
+                       ((boundp symbol)
+                        (find-definition-noselect symbol 'defvar))
+                       (t
+                        nil))
+               (error nil))))
        (if (null def)
-           path
-         (let (file line)
-           (with-current-buffer (car def)
-             (if (string-match "/\\(\\(?:src\\|lisp\\)/.*\\)\\'" buffer-file-name)
-                 (setq file (match-string 1 buffer-file-name))
-               (error "Could not find definiton: %S" symbol))
-             (setq line (number-to-string (line-number-at-pos (cdr def)))))
-           (format "<a href=%S>%s</a>"
-                   (funcall orly-el-web-address-function file line)
-                   path)))))
+           (format "<code>%s</code>" path)
+         (or (let (file line)
+               (with-current-buffer (car def)
+                 (when (string-match "/\\(\\(?:src\\|lisp\\)/.*\\)\\'" buffer-file-name)
+                   (setq file (match-string 1 buffer-file-name))
+                   (setq line (number-to-string (line-number-at-pos (cdr def))))
+                   (format "<a href=%S>%s</a>"
+                           (funcall orly-el-web-address-function file line)
+                           path))))
+             (format "<code>%s</code>" path)))))
     (t path)))
 
 (defun orly-completion-symbols ()
