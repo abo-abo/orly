@@ -92,10 +92,12 @@
          (list cmd)
        (cons cmd files))))
   (let (fname)
-    (if (and (null (cdr file-list))
-             (not (file-directory-p (setq fname (car file-list))))
-             (file-executable-p fname)
-             (string-match-p "^\\(#!\\|ELF\\)" (counsel--command "head" "-1" fname)))
+    (if (and
+         file-list
+         (null (cdr file-list))
+         (not (file-directory-p (setq fname (car file-list))))
+         (file-executable-p fname)
+         (string-match-p "^\\(#!\\|ELF\\)" (counsel--command "head" "-1" fname)))
         (let ((buf (compile (concat "./" (car file-list)) t)))
           (select-window (cl-find buf
                                   (window-list)
