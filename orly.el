@@ -63,6 +63,7 @@
   (setq completion-at-point-functions
         (delete-dups
          (append '(orly-completion-symbols
+                   orly-completion-properties
                    orly-completion-elisp
                    orly-completion-executables
                    orly-completion-filesystem
@@ -199,6 +200,21 @@
           cands))
       (when cands
         (list (match-beginning 0) (match-end 0) cands)))))
+
+(defun orly-completion-properties ()
+  (cond ((looking-back "^#[^ ]*" (line-beginning-position))
+         (list (match-beginning 0)
+               (match-end 0)
+               (all-completions (match-string 0)
+                                '("#+title: "
+                                  "#+setupfile: "
+                                  "#+property: "
+                                  "#+include: "
+                                  "#+call: "))))
+        ((looking-back "^#\\+property: \\(.*\\)" (line-beginning-position))
+         (list (match-beginning 1)
+               (match-end 1)
+               '("header-args ")))))
 
 (defun orly-completion-elisp ()
   (when (looking-back "el:\\([a-zA-Z._-0-9]*\\)" (line-beginning-position))
