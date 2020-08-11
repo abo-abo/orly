@@ -62,7 +62,8 @@
 (defun orly-setup-completion ()
   (setq completion-at-point-functions
         (delete-dups
-         (append '(orly-completion-symbols
+         (append '(orly-completion-contacts
+                   orly-completion-symbols
                    orly-completion-properties
                    orly-completion-elisp
                    orly-completion-executables
@@ -200,6 +201,37 @@
           cands))
       (when cands
         (list (match-beginning 0) (match-end 0) cands)))))
+
+(defvar orly-contacts-file
+  (if (featurep 'plain-org-wiki)
+      (cdr (assoc "contacts" (plain-org-wiki-files)))
+    nil)
+  "Org file name where the contacts are second level outlines.")
+
+(defun orly-to-nickname (name)
+  (concat "@" (replace-regexp-in-string " " "_" (downcase name))))
+
+(defun orly-read-contacts-file ()
+  (let (res)
+    (with-current-buffer (find-file-noselect orly-contacts-file)
+      (save-match-data
+        (save-excursion
+          (goto-char (point-min))
+          (while (re-search-forward "^\\*\\* \\([A-Za-z ]+\\)$" nil t)
+            (let* ((name (match-string-no-properties 1))
+                   (nick (orly-to-nickname name)))
+              (push nick res))))))
+    (nreverse res)))
+
+(defvar orly-contacts nil)
+
+(defun orly-completion-contacts ()
+  (when (looking-back "@[a-z_]*" (line-beginning-position))
+    (let ((cands (or orly-contacts
+                     (setq orly-contacts (orly-read-contacts-file)))))
+      (list
+       (match-beginning 0) (match-end 0)
+       (all-completions (match-string-no-properties 0) cands)))))
 
 (defun orly-completion-properties ()
   (cond ((looking-back "^#[^ ]*" (line-beginning-position))
