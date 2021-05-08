@@ -263,6 +263,7 @@
            (orly-executables)))))
 
 (defun orly-completion-filesystem ()
+  (require 'ffap)
   (let (path)
     (when (and (setq path (ffap-string-at-point))
                (not (string= path "")))
