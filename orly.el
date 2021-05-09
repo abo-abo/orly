@@ -1,6 +1,6 @@
 ;;; orly.el --- Additional Org-mode link types and completion for them  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2019  Oleh Krehel
+;; Copyright (C) 2019-2021  Oleh Krehel
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/orly
@@ -59,18 +59,20 @@
 
 (orly-setup-links)
 
+(defvar orly-completion-functions '(orly-completion-contacts
+                                    orly-completion-symbols
+                                    orly-completion-properties
+                                    orly-completion-elisp
+                                    orly-completion-executables
+                                    orly-completion-filesystem
+                                    orly-completion-refs
+                                    orly-completion-dabbrev))
+
+(defun orly-completion-function ()
+  (run-hook-with-args-until-success 'orly-completion-functions))
+
 (defun orly-setup-completion ()
-  (setq completion-at-point-functions
-        (delete-dups
-         (append '(orly-completion-contacts
-                   orly-completion-symbols
-                   orly-completion-properties
-                   orly-completion-elisp
-                   orly-completion-executables
-                   orly-completion-filesystem
-                   orly-completion-refs
-                   orly-completion-dabbrev)
-                 completion-at-point-functions))))
+  (cl-pushnew 'orly-completion-function completion-at-point-functions))
 
 (defun orly--guess-cmd (files)
   (if current-prefix-arg
