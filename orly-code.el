@@ -82,7 +82,15 @@ The last 2 parts are optional."
   (require 'lpy)
   (lpy-back-to-special))
 
+(defun orly-completion-code ()
+  (cond ((looking-back "code:\\([^/]*\\)" (line-beginning-position))
+         (list (match-beginning 1) (match-end 1)
+               (all-completions
+                (match-string-no-properties 1)
+                orly-repos)))))
+
 (org-link-set-parameters "code" :follow #'orly-open-code-link)
+(cl-pushnew 'orly-completion-code orly-completion-functions)
 
 (provide 'orly-links)
 ;;; orly-links.el ends here
