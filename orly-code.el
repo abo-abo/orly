@@ -87,7 +87,14 @@ The last 2 parts are optional."
          (list (match-beginning 1) (match-end 1)
                (all-completions
                 (match-string-no-properties 1)
-                orly-repos)))))
+                orly-repos)))
+        ((looking-back "code:\\([^/]+\\)/\\([^/]*\\)" (line-beginning-position))
+         (let ((repo (match-string-no-properties 1))
+               (fname (match-string-no-properties 2)))
+           (list (match-beginning 2) (match-end 2)
+                 (all-completions
+                  fname
+                  (directory-files (nth 1 (assoc repo orly-repos)) nil "\\`[^._]")))))))
 
 (org-link-set-parameters "code" :follow #'orly-open-code-link)
 (cl-pushnew 'orly-completion-code orly-completion-functions)
