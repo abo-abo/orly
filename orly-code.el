@@ -19,7 +19,7 @@
 
 ;;; Commentary:
 
-;; This adds links like [code:orly/orly.el/orly-setup-links/a309064]
+;; This adds links like [code:orly/orly.el:orly-setup-links/a309064]
 ;; to `org-mode'.
 ;;
 ;; Advantages over the existing [file:...] link:
@@ -51,25 +51,29 @@ All lines that don't match this will be ignored."
 
 (defun orly-open-code-link (code-link)
   "Open CODE-LINK.
-CODE-LINK is REPO/FNAME/FUN/REV.
+CODE-LINK is REPO/FNAME:FUN/REV.
 The last 2 parts are optional."
-  (let* ((parts (split-string code-link "/"))
-         (repo (nth 0 parts))
-         (local-repo (assoc repo orly-repos))
-         (fname (if local-repo
-                    (expand-file-name (nth 1 parts) (nth 1 local-repo))
-                  (error "Could not find repo: %s" repo)))
-         (rest (cddr parts)))
-    (cl-case (length rest)
-      (0
-       (find-file fname))
-      (1
-       (find-file fname)
-       (orly-find-function (nth 0 rest)))
-      (2
-       (let ((rev (nth 1 rest)))
-         (switch-to-buffer (vc-find-revision fname rev))
-         (orly-find-function (nth 0 rest)))))))
+  (if (string-match "\\`\\([^/]+\\)/\\([^:]+\\)\\(:.*\\)?\\'" code-link)
+      (let* ((repo (match-string 1 code-link))
+             (path (match-string 2 code-link))
+             (rest (match-string 3 code-link))
+             (local-repo (assoc repo orly-repos))
+             (fname (if local-repo
+                        (expand-file-name path (nth 1 local-repo))
+                      (error "Could not find repo: %s" repo))))
+        (if rest
+            (let* ((parts (split-string (substring rest 1) "/"))
+                 (fun (nth 0 parts)))
+            (cl-case (length parts)
+              (1
+               (find-file fname)
+               (orly-find-function fun))
+              (2
+               (let ((rev (nth 1 parts)))
+                 (switch-to-buffer (vc-find-revision fname rev))
+                 (orly-find-function fun)))))
+          (find-file fname)))
+    (error "Failed to parse link: '%s'" code-link)))
 
 (cl-defgeneric orly-find-function (fun)
   "Find FUN in the current file."
