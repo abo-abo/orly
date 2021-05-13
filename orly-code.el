@@ -87,18 +87,25 @@ The last 2 parts are optional."
   (lpy-back-to-special))
 
 (defun orly-completion-code ()
-  (cond ((looking-back "code:\\([^/]*\\)" (line-beginning-position))
-         (list (match-beginning 1) (match-end 1)
-               (all-completions
-                (match-string-no-properties 1)
-                orly-repos)))
-        ((looking-back "code:\\([^/]+\\)/\\([^/]*\\)" (line-beginning-position))
-         (let ((repo (match-string-no-properties 1))
-               (fname (match-string-no-properties 2)))
-           (list (match-beginning 2) (match-end 2)
-                 (all-completions
-                  fname
-                  (directory-files (nth 1 (assoc repo orly-repos)) nil "\\`[^._]")))))))
+  (when (looking-back "code:\\([-A-Za-z0-9./_]*\\)" (line-beginning-position))
+    (let ((link (match-string-no-properties 1))
+          (mb (match-beginning 1)))
+      (if (string-match "\\`\\([^/]+\\)/\\(.*\\)\\'" link)
+          (let* ((repo (match-string 1 link))
+                 (repo-path (expand-file-name (nth 1 (assoc repo orly-repos))))
+                 (path (match-string 2 link))
+                 (full-path (if (string= path "")
+                                repo-path
+                              (expand-file-name path repo-path)))
+                 (part (file-name-nondirectory full-path))
+                 (default-directory (file-name-directory full-path))
+                 (beg (- (+ mb (length repo) (length path) 1) (length part))))
+            (list beg (+ beg (length part))
+                  (all-completions part #'read-file-name-internal
+                                   (lambda (s) (not (string-match-p "^[._]" s))))))
+        (list mb (+ mb (length link))
+              (mapcar (lambda (s) (concat s "/"))
+                      (all-completions link orly-repos)))))))
 
 (org-link-set-parameters "code" :follow #'orly-open-code-link)
 (cl-pushnew 'orly-completion-code orly-completion-functions)
