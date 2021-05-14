@@ -87,22 +87,45 @@ The last 2 parts are optional."
   (lpy-back-to-special))
 
 (defun orly-completion-code ()
-  (when (looking-back "code:\\([-A-Za-z0-9./_]*\\)" (line-beginning-position))
+  (when (looking-back "code:\\([-:A-Za-z0-9./_]*\\)" (line-beginning-position))
     (let ((link (match-string-no-properties 1))
-          (mb (match-beginning 1)))
-      (if (string-match "\\`\\([^/]+\\)/\\(.*\\)\\'" link)
+          (mb (match-beginning 1))
+          rev)
+      (if (string-match "\\`\\([^/]+\\)/\\([^:]+\\)\\(:[^/]*\\(/.*\\)?\\)?\\'" link)
           (let* ((repo (match-string 1 link))
                  (repo-path (expand-file-name (nth 1 (assoc repo orly-repos))))
-                 (path (match-string 2 link))
-                 (full-path (if (string= path "")
-                                repo-path
-                              (expand-file-name path repo-path)))
-                 (part (file-name-nondirectory full-path))
-                 (default-directory (file-name-directory full-path))
-                 (beg (- (+ mb (length repo) (length path) 1) (length part))))
-            (list beg (+ beg (length part))
-                  (all-completions part #'read-file-name-internal
-                                   (lambda (s) (not (string-match-p "^[._]" s))))))
+                 (default-directory repo-path))
+            (cond ((setq rev (match-string 4 link))
+                   (let ((commits (split-string
+                                   (shell-command-to-string
+                                    "git log -5 --pretty=format:'%h|%B'")
+                                   "\n" t))
+                         (cl nil))
+                     (dolist (commit commits)
+                       (push (split-string commit "|") cl))
+                     (list (- (+ mb (length link) 1) (length rev))
+                           (+ mb (length link))
+                           (all-completions
+                            (substring rev 1)
+                            cl)
+                           :annotation-function (lambda (s) (concat " " (cadr (assoc s cl)))))))
+
+                  ((match-string 3 link)
+                   ;; completion for function name
+                   )
+                  (t
+                   (let* ((path (match-string 2 link))
+                          (full-path (if (string= path "")
+                                         repo-path
+                                       (expand-file-name path repo-path)))
+                          (part (file-name-nondirectory full-path))
+                          (default-directory (file-name-directory full-path))
+                          (beg (- (+ mb (length repo) (length path) 1) (length part))))
+                     (list beg (+ beg (length part))
+                           (all-completions part #'read-file-name-internal
+                                            (lambda (s)
+                                              (not (or (string-match-p "\\`[._]" s)
+                                                       (string-match-p "~\\'" s))))))))))
         (list mb (+ mb (length link))
               (mapcar (lambda (s) (concat s "/"))
                       (all-completions link orly-repos)))))))
