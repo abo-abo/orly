@@ -86,30 +86,30 @@ The last 2 parts are optional."
   (require 'lpy)
   (lpy-back-to-special))
 
+(defun orly--complete-commits (repo-path rev)
+  (let* ((default-directory repo-path)
+         (commits (split-string
+                   (shell-command-to-string
+                    "git log -5 --pretty=format:'%h|%B'")
+                   "\n" t))
+         (cl nil))
+    (dolist (commit commits)
+      (push (split-string commit "|") cl))
+    (list (- (point) (length rev))
+          (point)
+          (all-completions rev cl)
+          :annotation-function (lambda (s) (concat " " (cadr (assoc s cl)))))))
+
 (defun orly-completion-code ()
   (when (looking-back "code:\\([-:A-Za-z0-9./_]*\\)" (line-beginning-position))
     (let ((link (match-string-no-properties 1))
           (mb (match-beginning 1))
-          rev)
-      (if (string-match "\\`\\([^/]+\\)/\\([^:]+\\)\\(:[^/]*\\(/.*\\)?\\)?\\'" link)
+          rev-part)
+      (if (string-match "\\`\\([^/]+\\)/\\([^:]*\\)\\(:[^/]*\\(/.*\\)?\\)?\\'" link)
           (let* ((repo (match-string 1 link))
-                 (repo-path (expand-file-name (nth 1 (assoc repo orly-repos))))
-                 (default-directory repo-path))
-            (cond ((setq rev (match-string 4 link))
-                   (let ((commits (split-string
-                                   (shell-command-to-string
-                                    "git log -5 --pretty=format:'%h|%B'")
-                                   "\n" t))
-                         (cl nil))
-                     (dolist (commit commits)
-                       (push (split-string commit "|") cl))
-                     (list (- (+ mb (length link) 1) (length rev))
-                           (+ mb (length link))
-                           (all-completions
-                            (substring rev 1)
-                            cl)
-                           :annotation-function (lambda (s) (concat " " (cadr (assoc s cl)))))))
-
+                 (repo-path (expand-file-name (nth 1 (assoc repo orly-repos)))))
+            (cond ((setq rev-part (match-string 4 link))
+                   (orly--complete-commits repo-path (substring rev-part 1)))
                   ((match-string 3 link)
                    ;; completion for function name
                    )
