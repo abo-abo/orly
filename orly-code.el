@@ -100,19 +100,32 @@ The last 2 parts are optional."
           (all-completions rev cl)
           :annotation-function (lambda (s) (concat " " (cadr (assoc s cl)))))))
 
+(defun orly--complete-tags (fname tag)
+  (let ((tags
+         (with-current-buffer (find-file-noselect fname)
+           (mapcar #'car
+                   (cl-remove-if-not
+                    (lambda (tag) (eq (semantic-tag-class tag) 'function))
+                    (counsel-semantic-tags))))))
+    (list (- (point) (length tag))
+          (point)
+          (all-completions tag tags))))
+
 (defun orly-completion-code ()
   (when (looking-back "code:\\([-:A-Za-z0-9./_]*\\)" (line-beginning-position))
     (let ((link (match-string-no-properties 1))
           (mb (match-beginning 1))
-          rev-part)
+          rev-part tag-part)
       (if (string-match "\\`\\([^/]+\\)/\\([^:]*\\)\\(:[^/]*\\(/.*\\)?\\)?\\'" link)
           (let* ((repo (match-string 1 link))
                  (repo-path (expand-file-name (nth 1 (assoc repo orly-repos)))))
             (cond ((setq rev-part (match-string 4 link))
                    (orly--complete-commits repo-path (substring rev-part 1)))
-                  ((match-string 3 link)
-                   ;; completion for function name
-                   )
+                  ((setq tag-part (match-string 3 link))
+                   (let ((fname (expand-file-name (match-string 2 link) repo-path)))
+                     (orly--complete-tags
+                      fname
+                      (substring tag-part 1))))
                   (t
                    (let* ((path (match-string 2 link))
                           (full-path (if (string= path "")
