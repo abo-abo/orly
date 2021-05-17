@@ -29,14 +29,13 @@
 ;; * Completion for each part of the link
 
 ;;; Code:
-(defvar orly-repos '((".cook.d" "~/.cook.d/"))
-  "An alist of repository names to repository locations.
-You can use `orly-read-repos-file' to initialize this variable.")
-
-(defun orly-read-repos-file (org-fname)
-  "Read `orly-repos' from ORG-FNAME.
+(defvar orly-repos-file nil
+  "An `org-mode' file name to be processed by `orly-read-repos-from-file'.
 Each repo should be a \"file:~/foo/bar\".
-All lines that don't match this will be ignored."
+All lines that don't match this will be ignored.")
+
+(defun orly-read-repos-from-file (org-fname)
+  "Read repos alist from ORG-FNAME."
   (with-current-buffer (find-file-noselect org-fname)
     (let ((res nil))
       (save-excursion
@@ -49,6 +48,10 @@ All lines that don't match this will be ignored."
                   res))))
       (nreverse res))))
 
+(defun orly-repos ()
+  "Return an alist of repository names to repository locations."
+  (orly-read-repos-file orly-repos-file))
+
 (defun orly-open-code-link (code-link)
   "Open CODE-LINK.
 CODE-LINK is REPO/FNAME:FUN/REV.
@@ -57,21 +60,21 @@ The last 2 parts are optional."
       (let* ((repo (match-string 1 code-link))
              (path (match-string 2 code-link))
              (rest (match-string 3 code-link))
-             (local-repo (assoc repo orly-repos))
+             (local-repo (assoc repo (orly-repos)))
              (fname (if local-repo
                         (expand-file-name path (nth 1 local-repo))
                       (error "Could not find repo: %s" repo))))
         (if rest
             (let* ((parts (split-string (substring rest 1) "/"))
-                 (fun (nth 0 parts)))
-            (cl-case (length parts)
-              (1
-               (find-file fname)
-               (orly-find-function fun))
-              (2
-               (let ((rev (nth 1 parts)))
-                 (switch-to-buffer (vc-find-revision fname rev))
-                 (orly-find-function fun)))))
+                   (fun (nth 0 parts)))
+              (cl-case (length parts)
+                (1
+                 (find-file fname)
+                 (orly-find-function fun))
+                (2
+                 (let ((rev (nth 1 parts)))
+                   (switch-to-buffer (vc-find-revision fname rev))
+                   (orly-find-function fun)))))
           (find-file fname)))
     (error "Failed to parse link: '%s'" code-link)))
 
@@ -122,10 +125,11 @@ TAG is passed to `all-completions'."
   (when (looking-back "code:\\([-:A-Za-z0-9./_]*\\)" (line-beginning-position))
     (let ((link (match-string-no-properties 1))
           (mb (match-beginning 1))
+          (repos (orly-repos))
           rev-part tag-part)
       (if (string-match "\\`\\([^/]+\\)/\\([^:]*\\)\\(:[^/]*\\(/.*\\)?\\)?\\'" link)
           (let* ((repo (match-string 1 link))
-                 (repo-path (expand-file-name (nth 1 (assoc repo orly-repos)))))
+                 (repo-path (expand-file-name (nth 1 (assoc repo repos)))))
             (cond ((setq rev-part (match-string 4 link))
                    (orly--complete-commits repo-path (substring rev-part 1)))
                   ((setq tag-part (match-string 3 link))
@@ -148,7 +152,7 @@ TAG is passed to `all-completions'."
                                                        (string-match-p "~\\'" s))))))))))
         (list mb (+ mb (length link))
               (mapcar (lambda (s) (concat s "/"))
-                      (all-completions link orly-repos)))))))
+                      (all-completions link repos)))))))
 
 (org-link-set-parameters "code" :follow #'orly-open-code-link)
 (cl-pushnew 'orly-completion-code orly-completion-functions)
