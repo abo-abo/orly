@@ -81,12 +81,16 @@ The last 2 parts are optional."
   (search-forward fun nil t))
 
 (cl-defmethod orly-find-function (fun &context (major-mode python-mode))
+  "Find FUN in the current file.
+Specialized for MAJOR-MODE `python-mode'."
   (goto-char (point-min))
   (search-forward (concat "def " fun))
   (require 'lpy)
   (lpy-back-to-special))
 
 (defun orly--complete-commits (repo-path rev)
+  "List completions for commits in REPO-PATH.
+REV is passed to `all-completions'."
   (let* ((default-directory repo-path)
          (commits (split-string
                    (shell-command-to-string
@@ -101,6 +105,8 @@ The last 2 parts are optional."
           :annotation-function (lambda (s) (concat " " (cadr (assoc s cl)))))))
 
 (defun orly--complete-tags (fname tag)
+  "Complete tags in FNAME.
+TAG is passed to `all-completions'."
   (let ((tags
          (with-current-buffer (find-file-noselect fname)
            (mapcar #'car
@@ -112,6 +118,7 @@ The last 2 parts are optional."
           (all-completions tag tags))))
 
 (defun orly-completion-code ()
+  "Completion for code: links in `org-mode'."
   (when (looking-back "code:\\([-:A-Za-z0-9./_]*\\)" (line-beginning-position))
     (let ((link (match-string-no-properties 1))
           (mb (match-beginning 1))
@@ -146,5 +153,6 @@ The last 2 parts are optional."
 (org-link-set-parameters "code" :follow #'orly-open-code-link)
 (cl-pushnew 'orly-completion-code orly-completion-functions)
 
-(provide 'orly-links)
-;;; orly-links.el ends here
+(provide 'orly-code)
+
+;;; orly-code.el ends here
