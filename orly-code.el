@@ -95,10 +95,11 @@ Specialized for MAJOR-MODE `python-mode'."
   "List completions for commits in REPO-PATH.
 REV is passed to `all-completions'."
   (let* ((default-directory repo-path)
-         (commits (split-string
-                   (shell-command-to-string
-                    "git log -5 --pretty=format:'%h|%B'")
-                   "\n" t))
+         (commits (nreverse
+                   (split-string
+                    (shell-command-to-string
+                     "git log -5 --pretty=format:'%h|%B'")
+                    "\n" t)))
          (cl nil))
     (dolist (commit commits)
       (push (split-string commit "|") cl))
