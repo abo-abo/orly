@@ -50,7 +50,7 @@ All lines that don't match this will be ignored.")
 
 (defun orly-repos ()
   "Return an alist of repository names to repository locations."
-  (orly-read-repos-file orly-repos-file))
+  (orly-read-repos-from-file orly-repos-file))
 
 (defun orly-open-code-link (code-link)
   "Open CODE-LINK.
