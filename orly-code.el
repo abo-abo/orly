@@ -141,7 +141,7 @@ TAG is passed to `all-completions'."
                   (t
                    (let* ((path (match-string 2 link))
                           (full-path (if (string= path "")
-                                         repo-path
+                                         (file-name-as-directory repo-path)
                                        (expand-file-name path repo-path)))
                           (part (file-name-nondirectory full-path))
                           (default-directory (file-name-directory full-path))
