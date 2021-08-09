@@ -19,8 +19,9 @@
 
 ;;; Commentary:
 
-;; This adds links like [code:orly/orly.el:orly-setup-links/a309064]
-;; to `org-mode'.
+;; This adds links like this to `org-mode':
+;; - code:orly/orly.el:orly-setup-links/a309064
+;; - code:orly/orly.el#54/a309064
 ;;
 ;; Advantages over the existing [file:...] link:
 ;; * Repositores can be moved around without changing the link
@@ -52,11 +53,19 @@ All lines that don't match this will be ignored.")
   "Return an alist of repository names to repository locations."
   (orly-read-repos-from-file orly-repos-file))
 
+(defun orly-find-loc (loc)
+  "Find location LOC.
+LOC is a line number if it starts with #.
+LOC is a function name if starts with :."
+  (if (string-prefix-p "#" loc)
+      (goto-line (string-to-number (substring loc 1)))
+    (orly-find-function (substring loc 1))))
+
 (defun orly-open-code-link (code-link)
   "Open CODE-LINK.
 CODE-LINK is REPO/FNAME:FUN/REV.
 The last 2 parts are optional."
-  (if (string-match "\\`\\([^/]+\\)/\\([^:]+\\)\\(:.*\\)?\\'" code-link)
+  (if (string-match "\\`\\([^/]+\\)/\\([^:#]+\\)\\([:#].*\\)?\\'" code-link)
       (let* ((repo (match-string 1 code-link))
              (path (match-string 2 code-link))
              (rest (match-string 3 code-link))
@@ -65,16 +74,16 @@ The last 2 parts are optional."
                         (expand-file-name path (nth 1 local-repo))
                       (error "Could not find repo: %s" repo))))
         (if rest
-            (let* ((parts (split-string (substring rest 1) "/"))
-                   (fun (nth 0 parts)))
+            (let* ((parts (split-string rest "/"))
+                   (loc (nth 0 parts)))
               (cl-case (length parts)
                 (1
                  (find-file fname)
-                 (orly-find-function fun))
+                 (orly-find-loc loc))
                 (2
                  (let ((rev (nth 1 parts)))
                    (switch-to-buffer (vc-find-revision fname rev))
-                   (orly-find-function fun)))))
+                   (orly-find-loc loc)))))
           (find-file fname)))
     (error "Failed to parse link: '%s'" code-link)))
 
@@ -121,23 +130,38 @@ TAG is passed to `all-completions'."
           (point)
           (all-completions tag tags))))
 
+(defun orly--complete-lines (fname line)
+  (let* ((n-lines (with-current-buffer (find-file-noselect fname)
+                    (line-number-at-pos (point-max))))
+         (lines (mapcar
+                 #'number-to-string
+                 (number-sequence
+                  1 n-lines))))
+    (list (- (point) (length line))
+          (point)
+          (all-completions line lines))))
+
 (defun orly-completion-code ()
   "Completion for code: links in `org-mode'."
-  (when (looking-back "code:\\([-:A-Za-z0-9./_]*\\)" (line-beginning-position))
+  (when (looking-back "code:\\([-:A-Za-z0-9./_#]*\\)" (line-beginning-position))
     (let ((link (match-string-no-properties 1))
           (mb (match-beginning 1))
           (repos (orly-repos))
           rev-part tag-part)
-      (if (string-match "\\`\\([^/]+\\)/\\([^:]*\\)\\(:[^/]*\\(/.*\\)?\\)?\\'" link)
+      (if (string-match "\\`\\([^/]+\\)/\\([^:#]*\\)\\([:#][^/]*\\(/.*\\)?\\)?\\'" link)
           (let* ((repo (match-string 1 link))
                  (repo-path (expand-file-name (nth 1 (assoc repo repos)))))
             (cond ((setq rev-part (match-string 4 link))
                    (orly--complete-commits repo-path (substring rev-part 1)))
                   ((setq tag-part (match-string 3 link))
                    (let ((fname (expand-file-name (match-string 2 link) repo-path)))
-                     (orly--complete-tags
-                      fname
-                      (substring tag-part 1))))
+                     (if (string-prefix-p ":" tag-part)
+                         (orly--complete-tags
+                          fname
+                          (substring tag-part 1))
+                       (orly--complete-lines
+                        fname
+                        (substring tag-part 1)))))
                   (t
                    (let* ((path (match-string 2 link))
                           (full-path (if (string= path "")
@@ -149,7 +173,7 @@ TAG is passed to `all-completions'."
                      (list beg (+ beg (length part))
                            (all-completions part #'read-file-name-internal
                                             (lambda (s)
-                                              (not (or (string-match-p "\\`[._]" s)
+                                              (not (or (string-match-p "\\`\\(\\.\\|__\\)" s)
                                                        (string-match-p "~\\'" s))))))))))
         (list mb (+ mb (length link))
               (mapcar (lambda (s) (concat s "/"))
