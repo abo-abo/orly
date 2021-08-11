@@ -49,9 +49,22 @@ All lines that don't match this will be ignored.")
                   res))))
       (nreverse res))))
 
+(defun orly-read-repos-from-attachments ()
+  "Read Git repos from the current file's attachments."
+  (let ((fs (counsel-org-files))
+        res)
+    (dolist (f fs)
+      (when (and (file-directory-p f)
+                 (file-exists-p (expand-file-name ".git" f)))
+        (push (list (file-name-nondirectory f) (expand-file-name f))
+              res)))
+    res))
+
 (defun orly-repos ()
   "Return an alist of repository names to repository locations."
-  (orly-read-repos-from-file orly-repos-file))
+  (append
+   (orly-read-repos-from-file orly-repos-file)
+   (orly-read-repos-from-attachments)))
 
 (defun orly-find-loc (loc)
   "Find location LOC.
