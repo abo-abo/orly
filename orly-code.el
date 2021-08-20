@@ -105,7 +105,7 @@ The last 2 parts are optional."
   (goto-char (point-min))
   (search-forward fun nil t))
 
-(cl-defmethod orly-find-function (fun &context (major-mode python-mode))
+(cl-defmethod orly-find-function (fun &context (major-mode (eql python-mode)))
   "Find FUN in the current file.
 Specialized for MAJOR-MODE `python-mode'."
   (goto-char (point-min))
