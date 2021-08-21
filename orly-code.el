@@ -144,15 +144,20 @@ TAG is passed to `all-completions'."
           (all-completions tag tags))))
 
 (defun orly--complete-lines (fname line)
-  (let* ((n-lines (with-current-buffer (find-file-noselect fname)
-                    (line-number-at-pos (point-max))))
-         (lines (mapcar
-                 #'number-to-string
-                 (number-sequence
-                  1 n-lines))))
+  (let ((lines nil)
+        (i 1))
+    (with-current-buffer (find-file-noselect fname)
+      (goto-char (point-min))
+      (while (not (eobp))
+        (push (format "%d %s" i (buffer-substring-no-properties
+                                 (line-beginning-position) (line-end-position)))
+              lines)
+        (cl-incf i)
+        (forward-line 1)))
+    (setq lines (nreverse lines))
     (list (- (point) (length line))
           (point)
-          (all-completions line lines))))
+          (cl-remove-if-not (lambda (s) (string-match-p line s)) lines))))
 
 (defun orly-completion-code ()
   "Completion for code: links in `org-mode'."
