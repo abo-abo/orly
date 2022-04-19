@@ -74,6 +74,12 @@ LOC is a function name if starts with :."
       (goto-line (string-to-number (substring loc 1)))
     (orly-find-function (substring loc 1))))
 
+(defvar orly--last-window-configuration nil)
+
+(defun orly--ediff-restore-windows ()
+  (set-window-configuration orly--last-window-configuration)
+  (remove-hook 'ediff-after-quit-hook-internal 'orly--ediff-restore-windows))
+
 (defun orly-open-code-link (code-link)
   "Open CODE-LINK.
 CODE-LINK is REPO/FNAME:FUN/REV.
@@ -95,8 +101,19 @@ The last 2 parts are optional."
                  (orly-find-loc loc))
                 (2
                  (let ((rev (nth 1 parts)))
-                   (switch-to-buffer (vc-find-revision fname rev))
-                   (orly-find-loc loc)))))
+                   ;; TODO: maybe modify `kill-buffer-hook' to delete this file later
+                   (switch-to-buffer (vc-find-revision fname rev 'git))
+                   (orly-find-loc loc)))
+                (3
+                 (if (string= (nth 2 parts) "diff")
+                     (let ((rev (nth 1 parts)))
+                       (setq orly--last-window-configuration (current-window-configuration))
+                       (add-hook 'ediff-after-quit-hook-internal 'orly--ediff-restore-windows)
+                       (vc-version-ediff
+                        (list fname)
+                        (concat rev "~1")
+                        rev))
+                   (error "Unexpected op: %s" (nth 2 parts))))))
           (find-file fname)))
     (error "Failed to parse link: '%s'" code-link)))
 
