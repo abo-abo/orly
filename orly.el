@@ -66,6 +66,7 @@
                                     orly-completion-executables
                                     orly-completion-filesystem
                                     orly-completion-refs
+                                    pcomplete-completions-at-point
                                     orly-completion-dabbrev))
 
 (defun orly-completion-function ()
