@@ -120,7 +120,7 @@ REV is passed to `all-completions'."
          (commits (nreverse
                    (split-string
                     (shell-command-to-string
-                     "git log -5 --pretty=format:'%h|%B'")
+                     "git log -5 --pretty=format:'%h|%s'")
                     "\n" t)))
          (cl nil))
     (dolist (commit commits)
