@@ -178,7 +178,7 @@ TAG is passed to `all-completions'."
 
 (defun orly-completion-code ()
   "Completion for code: links in `org-mode'."
-  (when (looking-back "code:\\([-:A-Za-z0-9./_#]*\\)" (line-beginning-position))
+  (when (looking-back "code:\\([-:~A-Za-z0-9./_#]*\\)" (line-beginning-position))
     (let ((link (match-string-no-properties 1))
           (mb (match-beginning 1))
           (repos (orly-repos))
@@ -199,17 +199,21 @@ TAG is passed to `all-completions'."
                         (substring tag-part 1)))))
                   (t
                    (let* ((path (match-string 2 link))
-                          (full-path (if (string= path "")
-                                         (file-name-as-directory repo-path)
-                                       (expand-file-name path repo-path)))
+                          (full-path (cond ((string= path "")
+                                            (file-name-as-directory repo-path))
+                                           ((string= path ".")
+                                            (concat repo-path path))
+                                           (t
+                                            (expand-file-name path repo-path))))
                           (part (file-name-nondirectory full-path))
                           (default-directory (file-name-directory full-path))
                           (beg (- (+ mb (length repo) (length path) 1) (length part))))
                      (list beg (+ beg (length part))
                            (all-completions part #'read-file-name-internal
-                                            (lambda (s)
-                                              (not (or (string-match-p "\\`\\(\\.\\|__\\)" s)
-                                                       (string-match-p "~\\'" s))))))))))
+                                            (unless (string-match-p "\\`\\." part)
+                                              (lambda (s)
+                                                (not (or (string-match-p "\\`\\(\\.\\|__\\)" s)
+                                                         (string-match-p "~\\'" s)))))))))))
         (list mb (+ mb (length link))
               (mapcar (lambda (s) (concat s "/"))
                       (all-completions link repos)))))))
