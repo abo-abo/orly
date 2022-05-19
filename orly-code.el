@@ -105,15 +105,20 @@ The last 2 parts are optional."
                    (switch-to-buffer (vc-find-revision fname rev 'git))
                    (orly-find-loc loc)))
                 (3
-                 (if (string= (nth 2 parts) "diff")
-                     (let ((rev (nth 1 parts)))
-                       (setq orly--last-window-configuration (current-window-configuration))
-                       (add-hook 'ediff-after-quit-hook-internal 'orly--ediff-restore-windows)
-                       (vc-version-ediff
-                        (list fname)
-                        (concat rev "~1")
-                        rev))
-                   (error "Unexpected op: %s" (nth 2 parts))))))
+                 (cond ((string= (nth 2 parts) "diff")
+                        (let ((rev (nth 1 parts)))
+                          (setq orly--last-window-configuration (current-window-configuration))
+                          (add-hook 'ediff-after-quit-hook-internal 'orly--ediff-restore-windows)
+                          (vc-version-ediff
+                           (list fname)
+                           (concat rev "~1")
+                           rev)))
+                       ;; TODO: finish
+                       ((string= (nth 2 parts) "cook")
+                        (let ((default-directory (nth 1 local-repo)))
+                          (cook-book fname (substring loc 1))))
+                       (t
+                        (error "Unexpected op: %s" (nth 2 parts)))))))
           (find-file fname)))
     (error "Failed to parse link: '%s'" code-link)))
 
@@ -151,11 +156,15 @@ REV is passed to `all-completions'."
   "Complete tags in FNAME.
 TAG is passed to `all-completions'."
   (let ((tags
-         (with-current-buffer (find-file-noselect fname)
-           (mapcar #'car
-                   (cl-remove-if-not
-                    (lambda (tag) (eq (semantic-tag-class tag) 'function))
-                    (counsel-semantic-tags))))))
+         (if (string= (file-name-nondirectory fname) "Cookbook.py")
+             (let ((default-directory (file-name-directory fname)))
+               (split-string
+                (shell-command-to-string "cook --list") "\n" t " "))
+           (with-current-buffer (find-file-noselect fname)
+             (mapcar #'car
+                     (cl-remove-if-not
+                      (lambda (tag) (eq (semantic-tag-class tag) 'function))
+                      (counsel-semantic-tags)))))))
     (list (- (point) (length tag))
           (point)
           (all-completions tag tags))))
@@ -185,18 +194,19 @@ TAG is passed to `all-completions'."
           rev-part tag-part)
       (if (string-match "\\`\\([^/]+\\)/\\([^:#]*\\)\\([:#][^/]*\\(/.*\\)?\\)?\\'" link)
           (let* ((repo (match-string 1 link))
-                 (repo-path (expand-file-name (nth 1 (assoc repo repos)))))
+                 (repo-path (expand-file-name (nth 1 (assoc repo repos))))
+                 (fname (expand-file-name (match-string 2 link) repo-path))
+                 (git-path (locate-dominating-file fname ".git")))
             (cond ((setq rev-part (match-string 4 link))
-                   (orly--complete-commits repo-path (substring rev-part 1)))
+                   (orly--complete-commits git-path (substring rev-part 1)))
                   ((setq tag-part (match-string 3 link))
-                   (let ((fname (expand-file-name (match-string 2 link) repo-path)))
-                     (if (string-prefix-p ":" tag-part)
-                         (orly--complete-tags
-                          fname
-                          (substring tag-part 1))
-                       (orly--complete-lines
+                   (if (string-prefix-p ":" tag-part)
+                       (orly--complete-tags
                         fname
-                        (substring tag-part 1)))))
+                        (substring tag-part 1))
+                     (orly--complete-lines
+                      fname
+                      (substring tag-part 1))))
                   (t
                    (let* ((path (match-string 2 link))
                           (full-path (cond ((string= path "")

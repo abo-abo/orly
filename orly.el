@@ -60,6 +60,7 @@
 (orly-setup-links)
 
 (defvar orly-completion-functions '(orly-completion-contacts
+                                    orly-completion-org-inline-sh
                                     orly-completion-symbols
                                     orly-completion-properties
                                     orly-completion-elisp
@@ -68,6 +69,25 @@
                                     orly-completion-refs
                                     pcomplete-completions-at-point
                                     orly-completion-dabbrev))
+
+(defun orly-completion-org-inline-sh ()
+  (when (looking-back "src_sh{\\(.*\\)" (line-beginning-position))
+    (let ((cmd (match-string 1))
+          (beg (match-beginning 1)))
+      (with-current-buffer (get-buffer "*shell  def*")
+        (let* ((start (comint-line-beginning-position))
+               (old-text (buffer-substring-no-properties
+                          start
+                          (point))))
+          (delete-region start (point))
+          (insert cmd)
+          (let ((res (bash-completion-dynamic-complete-nocomint
+                      start
+                      (point))))
+            (list
+             (+ beg (- (nth 0 res) start))
+             (+ beg (- (nth 1 res) start))
+             (nth 2 res))))))))
 
 (defun orly-completion-function ()
   (run-hook-with-args-until-success 'orly-completion-functions))
