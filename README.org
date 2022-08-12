@@ -1,0 +1,59 @@
+* Introduction
+Orly adds more Org-mode link types *and* completion for them.
+
+** Examples of link types
+You can make use of Elisp links, e.g. el:org-capture.  Clicking on the link will open the
+definition of the corresponding function/variable.  This is useful when writing wikis /
+documentation, because you no longer have to quote a part of the docstring: instead, the
+full docstring is just a click away.
+
+man:ls is a similarly useful link type.
+
+** Howto use completion
+After the link type is entered, press ~C-M-i~ (el:complete-symbol) to complete further.
+
+To enable completion:
+#+begin_src elisp
+(add-hook 'org-mode-hook 'orly-setup-completion)
+#+end_src
+
+** Links in Org export
+We can setup the links to be clickable in e.g. HTML export.
+For instance, man:ls can point to https://linux.die.net/man/.
+
+And el:forward-char links can point to https://git.savannah.gnu.org/cgit/emacs.git/tree/
+or https://github.com/emacs-mirror/emacs/.
+
+** Using code: link type
+#+begin_src elisp
+(require 'orly-code)
+(setq orly-repos-file "repos.org")
+#+end_src
+In =repos.org= you can write:
+#+begin_src org
+file:~/.cook.d/
+file:~/git/site-lisp/
+...
+#+end_src
+You can fill the file with comments and other code. We only care about the lines that
+start with "file:".
+
+Now you get completion for each step of e.g. code:site-lisp/modes/ora-org.el#26/9f8503a.
+Let's break it down:
+- code: completes all repositories registered in el:orly-repos-file
+- code:site-lisp/ completes all code paths in the =site-lisp= repo
+- code:site-lisp/modes/ora-org.el#26 means line 26 of the corresponding file
+- code:site-lisp/modes/ora-org.el#26/ allows us to complete for git revision
+- code:site-lisp/modes/ora-org.el#26/9f8503a is the final version at git revision
+
+Advantages of this approach compared to file: links:
+- You can move your repo around without breaking things
+- You can access the link on different machines with el:orly-repos-file setup
+- You can reference a permalink version of the code, so that when the code is updated, the
+  old link doesn't point to nowhere or somewhere wrong.
+
+There are also other repo link types:
+- code:monorepo:07b40a74bf references a commit. It will open a el:magit-diff-mode buffer
+  when clicked
+- code:monorepo#16909 references a PR. It will open a el:forge-topic-mode buffer when
+  clicked
