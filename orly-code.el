@@ -70,8 +70,8 @@ All lines that don't match this will be ignored.")
   "Find location LOC.
 LOC is a line number if it starts with #.
 LOC is a function name if starts with :."
-  (if (string-prefix-p "#" loc)
-      (goto-line (string-to-number (substring loc 1)))
+  (if (string-match "\\`#\\([0-9]+\\)\\'" loc)
+      (goto-line (string-to-number (match-string 1 loc)))
     (orly-find-function (substring loc 1))))
 
 (defvar orly--last-window-configuration nil)
@@ -84,50 +84,52 @@ LOC is a function name if starts with :."
   "Open CODE-LINK.
 CODE-LINK is REPO/FNAME:FUN/REV.
 The last 2 parts are optional."
-  (cond ((string-match "\\`\\([^/]+\\)/\\([^:#]+\\)\\([:#].*\\)?\\'" code-link)
-         (let* ((repo (match-string 1 code-link))
-                (path (match-string 2 code-link))
-                (rest (match-string 3 code-link))
-                (local-repo (assoc repo (orly-repos)))
-                (fname (if local-repo
-                           (expand-file-name path (nth 1 local-repo))
-                         (error "Could not find repo: %s" repo))))
-           (if rest
-               (let* ((parts (split-string rest "/"))
-                      (loc (nth 0 parts)))
-                 (cl-case (length parts)
-                   (1
-                    (find-file fname)
-                    (orly-find-loc loc))
-                   (2
-                    (let ((rev (nth 1 parts)))
-                      ;; TODO: maybe modify `kill-buffer-hook' to delete this file later
-                      (switch-to-buffer (vc-find-revision fname rev 'git))
-                      (orly-find-loc loc)))
-                   (3
-                    (cond ((string= (nth 2 parts) "diff")
-                           (let ((rev (nth 1 parts)))
-                             (setq orly--last-window-configuration (current-window-configuration))
-                             (add-hook 'ediff-after-quit-hook-internal 'orly--ediff-restore-windows)
-                             (vc-version-ediff
-                              (list fname)
-                              (concat rev "~1")
-                              rev)))
-                          ;; TODO: finish
-                          ((string= (nth 2 parts) "cook")
-                           (let ((default-directory (nth 1 local-repo)))
-                             (cook-book fname (substring loc 1))))
-                          (t
-                           (error "Unexpected op: %s" (nth 2 parts)))))))
-             (find-file fname))))
-        ((string-match "\\`\\([^:]+\\):\\(.*\\)\\'" code-link)
-         (let* ((repo (match-string 1 code-link))
-                (rev (match-string 2 code-link))
-                (local-repo (assoc repo (orly-repos)))
-                (default-directory (nth 1 local-repo)))
-           (magit-diff-range (concat rev "^.." rev))))
-        (t
-         (error "Failed to parse link: '%s'" code-link))))
+  (save-some-buffers t)
+  (let ((open-fn (cdr (assoc 'file org-link-frame-setup))))
+    (cond ((string-match "\\`\\([^/]+\\)/\\([^:#]+\\)\\([:#].*\\)?\\'" code-link)
+           (let* ((repo (match-string 1 code-link))
+                  (path (match-string 2 code-link))
+                  (rest (match-string 3 code-link))
+                  (local-repo (assoc repo (orly-repos)))
+                  (fname (if local-repo
+                             (expand-file-name path (nth 1 local-repo))
+                           (error "Could not find repo: %s" repo))))
+             (if rest
+                 (let* ((parts (split-string rest "/"))
+                        (loc (nth 0 parts)))
+                   (cl-case (length parts)
+                     (1
+                      (funcall open-fn fname)
+                      (orly-find-loc loc))
+                     (2
+                      (let ((rev (nth 1 parts)))
+                        ;; TODO: maybe modify `kill-buffer-hook' to delete this file later
+                        (switch-to-buffer (vc-find-revision fname rev 'git))
+                        (orly-find-loc loc)))
+                     (3
+                      (cond ((string= (nth 2 parts) "diff")
+                             (let ((rev (nth 1 parts)))
+                               (setq orly--last-window-configuration (current-window-configuration))
+                               (add-hook 'ediff-after-quit-hook-internal 'orly--ediff-restore-windows)
+                               (vc-version-ediff
+                                (list fname)
+                                (concat rev "~1")
+                                rev)))
+                            ;; TODO: finish
+                            ((string= (nth 2 parts) "cook")
+                             (let ((default-directory (nth 1 local-repo)))
+                               (cook-book fname (substring loc 1))))
+                            (t
+                             (error "Unexpected op: %s" (nth 2 parts)))))))
+               (funcall open-fn fname))))
+          ((string-match "\\`\\([^:]+\\):\\(.*\\)\\'" code-link)
+           (let* ((repo (match-string 1 code-link))
+                  (rev (match-string 2 code-link))
+                  (local-repo (assoc repo (orly-repos)))
+                  (default-directory (nth 1 local-repo)))
+             (magit-diff-range (concat rev "^.." rev))))
+          (t
+           (error "Failed to parse link: '%s'" code-link)))))
 
 (cl-defgeneric orly-find-function (fun)
   "Find FUN in the current file."
