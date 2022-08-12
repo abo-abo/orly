@@ -86,13 +86,13 @@ CODE-LINK is REPO/FNAME:FUN/REV.
 The last 2 parts are optional."
   (save-some-buffers t)
   (let ((open-fn (cdr (assoc 'file org-link-frame-setup))))
-    (cond ((string-match "\\`\\([^/]+\\)/\\([^:#]+\\)\\([:#].*\\)?\\'" code-link)
+    (cond ((string-match "\\`\\([^/]+\\)/\\([^:#]+\\)?\\([:#].*\\)?\\'" code-link)
            (let* ((repo (match-string 1 code-link))
                   (path (match-string 2 code-link))
                   (rest (match-string 3 code-link))
                   (local-repo (assoc repo (orly-repos)))
                   (fname (if local-repo
-                             (expand-file-name path (nth 1 local-repo))
+                             (expand-file-name (or path "") (nth 1 local-repo))
                            (error "Could not find repo: %s" repo))))
              (if rest
                  (let* ((parts (split-string rest "/"))
