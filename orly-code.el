@@ -128,6 +128,12 @@ The last 2 parts are optional."
                   (local-repo (assoc repo (orly-repos)))
                   (default-directory (nth 1 local-repo)))
              (magit-diff-range (concat rev "^.." rev))))
+          ((string-match "\\`\\([^:]+\\)#\\(.*\\)\\'" code-link)
+           (let* ((repo (match-string 1 code-link))
+                  (pr-id (match-string 2 code-link))
+                  (local-repo (assoc repo (orly-repos)))
+                  (default-directory (nth 1 local-repo)))
+             (forge-visit (forge-get-pullreq (string-to-number pr-id)))))
           (t
            (error "Failed to parse link: '%s'" code-link)))))
 

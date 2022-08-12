@@ -1,6 +1,6 @@
 ;;; orly.el --- Additional Org-mode link types and completion for them  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2019-2021  Oleh Krehel
+;; Copyright (C) 2019-2022  Oleh Krehel
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>
 ;; URL: https://github.com/abo-abo/orly
