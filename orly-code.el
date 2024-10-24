@@ -246,7 +246,32 @@ TAG is passed to `all-completions'."
               (mapcar (lambda (s) (concat s "/"))
                       (all-completions link repos)))))))
 
-(org-link-set-parameters "code" :follow #'orly-open-code-link)
+(org-link-set-parameters
+ "code"
+ :follow #'orly-open-code-link
+ :export #'orly-code-export)
+
+(defvar orly-repos-alist '(("orly" . "https://github.com/abo-abo/orly/tree/dev/"))
+  "Configure how code:<repo>/<path> links are exported as in e.g. Markdown/HTML.")
+
+(defun orly-repo-remote-path (repo)
+  (cdr (assoc repo orly-repos-alist)))
+
+(defun orly-code-export (path desc format)
+  (if (eq format 'md)
+      (if (string-match orly-code-regex path)
+          (let* ((repo (match-string 1 path))
+                 (subpath (match-string 2 path))
+                 (url (concat (orly-repo-remote-path repo) subpath)))
+            (format "[%s](%s)"
+                    (replace-regexp-in-string
+                     "\\\\_" "_"
+                     (if desc (substring-no-properties desc)
+                       (concat repo "/" subpath)))
+                    url))
+        (error "Failed regex"))
+    path))
+
 (cl-pushnew 'orly-completion-code orly-completion-functions)
 
 (provide 'orly-code)
