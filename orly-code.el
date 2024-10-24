@@ -80,13 +80,15 @@ LOC is a function name if starts with :."
   (set-window-configuration orly--last-window-configuration)
   (remove-hook 'ediff-after-quit-hook-internal 'orly--ediff-restore-windows))
 
+(defvar orly-code-regex "\\`\\([^/]+\\)/\\([^:#]+\\)?\\([:#].*\\)?\\'")
+
 (defun orly-open-code-link (code-link)
   "Open CODE-LINK.
 CODE-LINK is REPO/FNAME:FUN/REV.
 The last 2 parts are optional."
   (save-some-buffers t)
   (let ((open-fn (cdr (assoc 'file org-link-frame-setup))))
-    (cond ((string-match "\\`\\([^/]+\\)/\\([^:#]+\\)?\\([:#].*\\)?\\'" code-link)
+    (cond ((string-match orly-code-regex code-link)
            (let* ((repo (match-string 1 code-link))
                   (path (match-string 2 code-link))
                   (rest (match-string 3 code-link))
