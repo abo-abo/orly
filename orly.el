@@ -108,6 +108,7 @@
     (when cmd
       (orly-start cmd file))))
 
+;;;###autoload
 (defun orly-start (cmd &rest file-list)
   "Run CMD on FILE-LIST using nohup."
   (interactive
