@@ -43,12 +43,13 @@ to a different venv/environment that's specific to the document.")
   (let* ((func (python-info-current-defun))
          (import (lispy--eval-python-plain
                   (format "lp.get_import_name('%s')" (buffer-file-name))))
-         (desc (concat "py:" (replace-regexp-in-string
+         (url (concat "py:" (replace-regexp-in-string
                               "\\.__init__"
                               ""
                               (substring import 1 -1)) "." func)))
-    (kill-new desc)
-    (message desc)))
+    (kill-new (format "[[%s][%s]]" url func))
+    (message url)))
+
 
 (provide 'orly-py)
 ;;; orly-py.el ends here
