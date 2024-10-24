@@ -148,9 +148,10 @@ The last 2 parts are optional."
   "Find FUN in the current file.
 Specialized for MAJOR-MODE `python-mode'."
   (goto-char (point-min))
-  (search-forward (concat "def " fun))
-  (require 'lpy)
-  (lpy-back-to-special))
+  (when (or (search-forward (concat "def " fun) nil t)
+            (re-search-forward (concat " +" fun) nil t))
+    (require 'lpy)
+    (lpy-back-to-special)))
 
 (defun orly--complete-commits (repo-path rev)
   "List completions for commits in REPO-PATH.
