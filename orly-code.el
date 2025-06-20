@@ -135,7 +135,9 @@ The last 2 parts are optional."
                   (pr-id (match-string 2 code-link))
                   (local-repo (assoc repo (orly-repos)))
                   (default-directory (nth 1 local-repo)))
-             (forge-visit-pullreq (forge-get-pullreq (string-to-number pr-id)))))
+             (if (= (length pr-id) 40)
+                 (magit-show-commit pr-id)
+               (forge-visit-pullreq (forge-get-pullreq (string-to-number pr-id))))))
           (t
            (error "Failed to parse link: '%s'" code-link)))))
 
